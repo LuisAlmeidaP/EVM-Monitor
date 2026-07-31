@@ -31,6 +31,33 @@ interface DeleteActivityResponseBody {
   readonly mensaje: string;
 }
 
+interface ActivityEvmAnalysisResponseBody {
+  readonly actividadId: string;
+  readonly proyectoId: string;
+  readonly nombre: string;
+  readonly datosAvance: {
+    readonly bac: number;
+    readonly porcentajeAvancePlanificado: number;
+    readonly porcentajeAvanceReal: number;
+    readonly costoReal: number;
+  };
+  readonly indicadores: {
+    readonly pv: number;
+    readonly ev: number;
+    readonly cv: number;
+    readonly sv: number;
+    readonly cpi: number | null;
+    readonly spi: number | null;
+    readonly eac: number | null;
+    readonly vac: number | null;
+  };
+  readonly interpretacion: {
+    readonly estadoCosto: string | null;
+    readonly estadoCronograma: string | null;
+  };
+  readonly estadoGeneral: string | null;
+}
+
 const DATOS_VALIDOS = {
   nombre: 'Excavación',
   bac: 100_000,
@@ -283,6 +310,83 @@ describe('Actividades (e2e)', () => {
       await request(app.getHttpServer())
         .delete(`/actividades/${VALID_BUT_NON_EXISTENT_ID}`)
         .expect(404);
+    });
+  });
+
+  describe('GET /actividades/:actividadId/analisis-evm', () => {
+    it('returns the full EVM analysis contract for an existing activity', async () => {
+      const created = await request(app.getHttpServer())
+        .post(`/proyectos/${proyecto.id}/actividades`)
+        .send(DATOS_VALIDOS);
+      const createdBody = created.body as ActivityResponseBody;
+
+      const response = await request(app.getHttpServer())
+        .get(`/actividades/${createdBody.id}/analisis-evm`)
+        .expect(200);
+
+      const body = response.body as ActivityEvmAnalysisResponseBody;
+      expect(body).toEqual({
+        actividadId: createdBody.id,
+        proyectoId: proyecto.id,
+        nombre: 'Excavación',
+        datosAvance: {
+          bac: 100_000,
+          porcentajeAvancePlanificado: 50,
+          porcentajeAvanceReal: 40,
+          costoReal: 50_000,
+        },
+        indicadores: {
+          pv: 50_000,
+          ev: 40_000,
+          cv: -10_000,
+          sv: -10_000,
+          cpi: 0.8,
+          spi: 0.8,
+          eac: 125_000,
+          vac: -25_000,
+        },
+        interpretacion: {
+          estadoCosto: 'sobre_presupuesto',
+          estadoCronograma: 'atrasado',
+        },
+        estadoGeneral: 'critico',
+      });
+    });
+
+    it('returns a null cpi/estadoCosto/estadoGeneral when the actual cost is zero (edge case)', async () => {
+      const created = await request(app.getHttpServer())
+        .post(`/proyectos/${proyecto.id}/actividades`)
+        .send({ ...DATOS_VALIDOS, porcentajeAvanceReal: 0, costoReal: 0 });
+      const createdBody = created.body as ActivityResponseBody;
+
+      const response = await request(app.getHttpServer())
+        .get(`/actividades/${createdBody.id}/analisis-evm`)
+        .expect(200);
+
+      const body = response.body as ActivityEvmAnalysisResponseBody;
+      expect(body.indicadores.cpi).toBeNull();
+      expect(body.indicadores.eac).toBeNull();
+      expect(body.interpretacion.estadoCosto).toBeNull();
+      expect(body.estadoGeneral).toBeNull();
+    });
+
+    it('returns 404 with the uniform error contract when the activity does not exist', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/actividades/${VALID_BUT_NON_EXISTENT_ID}/analisis-evm`)
+        .expect(404);
+
+      const body = response.body as ErrorResponseBody;
+      expect(body).toMatchObject({
+        categoria: 'no_encontrado',
+        mensaje: expect.any(String) as string,
+        referencia: expect.any(String) as string,
+      });
+    });
+
+    it('returns 400 when the id is not a valid UUID', async () => {
+      await request(app.getHttpServer())
+        .get('/actividades/not-a-uuid/analisis-evm')
+        .expect(400);
     });
   });
 });

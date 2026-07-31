@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AnalyzeActivityEvmUseCase } from '../../application/activities/use-cases/analyze-activity-evm.use-case';
 import { ManageActivitiesUseCase } from '../../application/activities/use-cases/manage-activities.use-case';
 import { ACTIVITY_REPOSITORY } from '../../application/activities/ports/activity-repository.port';
 import { ProjectsModule } from '../projects/projects.module';
@@ -13,6 +14,7 @@ import { ProjectActivitiesController } from './project-activities.controller';
   controllers: [ActivitiesController, ProjectActivitiesController],
   providers: [
     ManageActivitiesUseCase,
+    AnalyzeActivityEvmUseCase,
     { provide: ACTIVITY_REPOSITORY, useClass: ActivityRepository },
   ],
 })
