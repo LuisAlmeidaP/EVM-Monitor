@@ -4,6 +4,7 @@ import databaseConfig from './infrastructure/config/database.config';
 import { envValidationSchema } from './infrastructure/config/env.validation';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
 import { ProjectsModule } from './infrastructure/projects/projects.module';
+import { ActivitiesModule } from './infrastructure/activities/activities.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ProjectsModule } from './infrastructure/projects/projects.module';
     }),
     PersistenceModule,
     ProjectsModule,
+    ActivitiesModule,
   ],
   controllers: [],
   providers: [],
