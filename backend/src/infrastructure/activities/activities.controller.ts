@@ -9,8 +9,10 @@ import {
   ParseUUIDPipe,
   Put,
 } from '@nestjs/common';
+import { AnalyzeActivityEvmUseCase } from '../../application/activities/use-cases/analyze-activity-evm.use-case';
 import { ManageActivitiesUseCase } from '../../application/activities/use-cases/manage-activities.use-case';
 import { UpdateActivityRequestDto } from './dto/update-activity-request.dto';
+import { ActivityEvmAnalysisResponseDto } from './dto/activity-evm-analysis-response.dto';
 import { ActivityResponseDto } from './dto/activity-response.dto';
 
 interface DeleteActivityResponse {
@@ -21,6 +23,7 @@ interface DeleteActivityResponse {
 export class ActivitiesController {
   constructor(
     private readonly manageActivitiesUseCase: ManageActivitiesUseCase,
+    private readonly analyzeActivityEvmUseCase: AnalyzeActivityEvmUseCase,
   ) {}
 
   @Get(':actividadId')
@@ -29,6 +32,15 @@ export class ActivitiesController {
   ): Promise<ActivityResponseDto> {
     const activity = await this.manageActivitiesUseCase.findById(actividadId);
     return ActivityResponseDto.fromDomain(activity);
+  }
+
+  @Get(':actividadId/analisis-evm')
+  async analizarEvm(
+    @Param('actividadId', ParseUUIDPipe) actividadId: string,
+  ): Promise<ActivityEvmAnalysisResponseDto> {
+    const { activity, analysis } =
+      await this.analyzeActivityEvmUseCase.execute(actividadId);
+    return ActivityEvmAnalysisResponseDto.fromDomain(activity, analysis);
   }
 
   @Put(':actividadId')
