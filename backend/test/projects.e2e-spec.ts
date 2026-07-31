@@ -7,6 +7,7 @@ import type { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { GlobalExceptionFilter } from './../src/infrastructure/filters/global-exception.filter';
 import { ProjectOrmEntity } from './../src/infrastructure/projects/entities/project.orm-entity';
+import { ActivityOrmEntity } from './../src/infrastructure/activities/entities/activity.orm-entity';
 import type { ErrorResponseBody } from './../src/infrastructure/filters/error-response.interface';
 
 interface ProjectResponseBody {
@@ -16,6 +17,26 @@ interface ProjectResponseBody {
 
 interface DeleteProjectResponseBody {
   readonly mensaje: string;
+}
+
+interface ProjectEvmAnalysisResponseBody {
+  readonly proyectoId: string;
+  readonly cantidadActividades: number;
+  readonly indicadores: {
+    readonly pv: number;
+    readonly ev: number;
+    readonly cv: number;
+    readonly sv: number;
+    readonly cpi: number | null;
+    readonly spi: number | null;
+    readonly eac: number | null;
+    readonly vac: number | null;
+  };
+  readonly interpretacion: {
+    readonly estadoCosto: string | null;
+    readonly estadoCronograma: string | null;
+  };
+  readonly estadoGeneral: string | null;
 }
 
 const VALID_BUT_NON_EXISTENT_ID = '00000000-0000-0000-0000-000000000000';
@@ -30,9 +51,33 @@ async function createProject(
   return response.body as ProjectResponseBody;
 }
 
+async function createActivity(
+  app: INestApplication<App>,
+  proyectoId: string,
+  overrides: Partial<{
+    nombre: string;
+    bac: number;
+    porcentajeAvancePlanificado: number;
+    porcentajeAvanceReal: number;
+    costoReal: number;
+  }> = {},
+): Promise<void> {
+  await request(app.getHttpServer())
+    .post(`/proyectos/${proyectoId}/actividades`)
+    .send({
+      nombre: 'Excavación',
+      bac: 100_000,
+      porcentajeAvancePlanificado: 50,
+      porcentajeAvanceReal: 40,
+      costoReal: 50_000,
+      ...overrides,
+    });
+}
+
 describe('Proyectos (e2e)', () => {
   let app: INestApplication<App>;
   let projectRepository: Repository<ProjectOrmEntity>;
+  let activityRepository: Repository<ActivityOrmEntity>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -53,13 +98,18 @@ describe('Proyectos (e2e)', () => {
     projectRepository = moduleFixture.get<Repository<ProjectOrmEntity>>(
       getRepositoryToken(ProjectOrmEntity),
     );
+    activityRepository = moduleFixture.get<Repository<ActivityOrmEntity>>(
+      getRepositoryToken(ActivityOrmEntity),
+    );
   });
 
   beforeEach(async () => {
+    await activityRepository.clear();
     await projectRepository.clear();
   });
 
   afterAll(async () => {
+    await activityRepository.clear();
     await projectRepository.clear();
     await app.close();
   });
@@ -224,6 +274,100 @@ describe('Proyectos (e2e)', () => {
       await request(app.getHttpServer())
         .delete(`/proyectos/${VALID_BUT_NON_EXISTENT_ID}`)
         .expect(404);
+    });
+  });
+
+  describe('GET /proyectos/:proyectoId/analisis-evm', () => {
+    it('returns the consolidated EVM analysis summed over every activity in the project', async () => {
+      const proyecto = await createProject(app, 'Torre Norte');
+      await createActivity(app, proyecto.id, {
+        nombre: 'Excavación',
+        bac: 100_000,
+        porcentajeAvancePlanificado: 50,
+        porcentajeAvanceReal: 40,
+        costoReal: 50_000,
+      });
+      await createActivity(app, proyecto.id, {
+        nombre: 'Cimentación',
+        bac: 200_000,
+        porcentajeAvancePlanificado: 30,
+        porcentajeAvanceReal: 35,
+        costoReal: 65_000,
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(`/proyectos/${proyecto.id}/analisis-evm`)
+        .expect(200);
+
+      const body = response.body as ProjectEvmAnalysisResponseBody;
+      expect(body).toEqual({
+        proyectoId: proyecto.id,
+        cantidadActividades: 2,
+        indicadores: {
+          pv: 110_000,
+          ev: 110_000,
+          cv: -5_000,
+          sv: 0,
+          cpi: 110_000 / 115_000,
+          spi: 1,
+          eac: 300_000 / (110_000 / 115_000),
+          vac: 300_000 - 300_000 / (110_000 / 115_000),
+        },
+        interpretacion: {
+          estadoCosto: 'sobre_presupuesto',
+          estadoCronograma: 'a_tiempo',
+        },
+        estadoGeneral: 'en_riesgo',
+      });
+    });
+
+    it('returns a business error (422) when the project has no activities (edge case)', async () => {
+      const proyecto = await createProject(app, 'Torre Sur');
+
+      const response = await request(app.getHttpServer())
+        .get(`/proyectos/${proyecto.id}/analisis-evm`)
+        .expect(422);
+
+      const body = response.body as ErrorResponseBody;
+      expect(body).toMatchObject({
+        categoria: 'negocio',
+        mensaje: expect.any(String) as string,
+        referencia: expect.any(String) as string,
+      });
+    });
+
+    it('returns 404 with the uniform error contract when the project does not exist', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/proyectos/${VALID_BUT_NON_EXISTENT_ID}/analisis-evm`)
+        .expect(404);
+
+      const body = response.body as ErrorResponseBody;
+      expect(body).toMatchObject({
+        categoria: 'no_encontrado',
+        mensaje: expect.any(String) as string,
+        referencia: expect.any(String) as string,
+      });
+    });
+
+    it('returns 400 when the id is not a valid UUID', async () => {
+      await request(app.getHttpServer())
+        .get('/proyectos/not-a-uuid/analisis-evm')
+        .expect(400);
+    });
+
+    it('only consolidates activities belonging to the given project (Proyecto-Actividad relationship)', async () => {
+      const proyectoA = await createProject(app, 'Torre Norte');
+      const proyectoB = await createProject(app, 'Torre Sur');
+      await createActivity(app, proyectoA.id, { bac: 100_000 });
+      await createActivity(app, proyectoB.id, { bac: 999_999 });
+
+      const response = await request(app.getHttpServer())
+        .get(`/proyectos/${proyectoA.id}/analisis-evm`)
+        .expect(200);
+
+      const body = response.body as ProjectEvmAnalysisResponseBody;
+      expect(body.cantidadActividades).toBe(1);
+      expect(body.indicadores.pv).toBe(50_000);
     });
   });
 });

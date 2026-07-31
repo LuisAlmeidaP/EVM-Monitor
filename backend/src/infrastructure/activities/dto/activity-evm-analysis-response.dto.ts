@@ -15,7 +15,7 @@ class DatosAvanceDto {
   }
 }
 
-class IndicadoresEvmDto {
+export class IndicadoresEvmDto {
   readonly pv: number;
   readonly ev: number;
   readonly cv: number;
@@ -37,7 +37,7 @@ class IndicadoresEvmDto {
   }
 }
 
-class InterpretacionEvmDto {
+export class InterpretacionEvmDto {
   readonly estadoCosto: EvmAnalysis['interpretation']['costStatus'];
   readonly estadoCronograma: EvmAnalysis['interpretation']['scheduleStatus'];
 
