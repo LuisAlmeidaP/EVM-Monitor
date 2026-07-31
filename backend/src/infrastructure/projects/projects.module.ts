@@ -13,5 +13,6 @@ import { ProjectsController } from './projects.controller';
     ManageProjectsUseCase,
     { provide: PROJECT_REPOSITORY, useClass: ProjectRepository },
   ],
+  exports: [PROJECT_REPOSITORY],
 })
 export class ProjectsModule {}
