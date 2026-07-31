@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
 import { MensajeError } from '../MensajeError/MensajeError';
 import { obtenerMensajeDeError } from '../../api/apiError';
 
@@ -20,6 +22,13 @@ export function FormularioProyecto({
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  const manejarCambio = (valor: string): void => {
+    setNombre(valor);
+    if (errorValidacion) {
+      setErrorValidacion(null);
+    }
+  };
 
   const manejarEnvio = async (evento: FormEvent<HTMLFormElement>): Promise<void> => {
     evento.preventDefault();
@@ -44,22 +53,26 @@ export function FormularioProyecto({
   };
 
   return (
-    <form onSubmit={(evento) => void manejarEnvio(evento)}>
-      <label htmlFor="nombre-proyecto">Nombre del proyecto</label>
-      <input
+    <form onSubmit={(evento) => void manejarEnvio(evento)} className="flex flex-col gap-4">
+      <Input
         id="nombre-proyecto"
+        label="Nombre del proyecto"
+        placeholder="Ej. Ampliación planta norte"
         value={nombre}
-        onChange={(evento) => setNombre(evento.target.value)}
+        onChange={(evento) => manejarCambio(evento.target.value)}
         disabled={enviando}
+        error={errorValidacion}
+        autoFocus
       />
-      {errorValidacion && <MensajeError mensaje={errorValidacion} />}
       {errorEnvio && <MensajeError mensaje={errorEnvio} />}
-      <button type="submit" disabled={enviando}>
-        {enviando ? 'Guardando...' : 'Guardar'}
-      </button>
-      <button type="button" onClick={onCancelar} disabled={enviando}>
-        Cancelar
-      </button>
+      <div className="mt-2 flex justify-end gap-3">
+        <Button type="button" variant="secondary" onClick={onCancelar} disabled={enviando}>
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={enviando}>
+          {enviando ? 'Guardando...' : 'Guardar'}
+        </Button>
+      </div>
     </form>
   );
 }

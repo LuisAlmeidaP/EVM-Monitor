@@ -15,21 +15,27 @@ test.describe('Gestión de Proyectos', () => {
     await page.getByLabel('Nombre del proyecto').fill(nombreProyecto);
     await page.getByRole('button', { name: 'Guardar' }).click();
     await expect(page.getByText(nombreProyecto)).toBeVisible();
+    await expect(page.getByText('Proyecto creado correctamente.')).toBeVisible();
 
     // Editar
-    const fila = page.getByRole('row').filter({ hasText: nombreProyecto });
-    await fila.getByRole('button', { name: 'Editar' }).click();
+    const tarjeta = page.getByRole('article').filter({ hasText: nombreProyecto });
+    await tarjeta.getByRole('button', { name: 'Editar' }).click();
     const input = page.getByLabel('Nombre del proyecto');
     await expect(input).toHaveValue(nombreProyecto);
     await input.fill(nombreProyectoEditado);
     await page.getByRole('button', { name: 'Guardar' }).click();
     await expect(page.getByText(nombreProyectoEditado)).toBeVisible();
+    await expect(page.getByText('Proyecto actualizado correctamente.')).toBeVisible();
 
-    // Eliminar
-    page.once('dialog', (dialog) => void dialog.accept());
-    const filaEditada = page.getByRole('row').filter({ hasText: nombreProyectoEditado });
-    await filaEditada.getByRole('button', { name: 'Eliminar' }).click();
-    await expect(page.getByText(nombreProyectoEditado)).not.toBeVisible();
+    // Eliminar (con diálogo de confirmación propio)
+    const tarjetaEditada = page.getByRole('article').filter({ hasText: nombreProyectoEditado });
+    await tarjetaEditada.getByRole('button', { name: 'Eliminar' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByRole('button', { name: 'Eliminar proyecto' }).click();
+    await expect(
+      page.getByRole('article').filter({ hasText: nombreProyectoEditado }),
+    ).toHaveCount(0);
+    await expect(page.getByText('Proyecto eliminado correctamente.')).toBeVisible();
   });
 
   test('muestra un error de validación al intentar crear un proyecto sin nombre', async ({
