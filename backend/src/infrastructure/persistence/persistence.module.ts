@@ -15,7 +15,7 @@ import databaseConfig from '../config/database.config';
         username: config.username,
         password: config.password,
         database: config.database,
-        entities: [],
+        autoLoadEntities: true,
         synchronize: false,
       }),
     }),
