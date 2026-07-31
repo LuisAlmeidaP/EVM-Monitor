@@ -23,7 +23,6 @@ const proyectoExistente: Proyecto = { id: '1', nombre: 'Torre Norte' };
 describe('ProyectosListado', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('shows a loading state while fetching and then renders the list', async () => {
@@ -104,7 +103,7 @@ describe('ProyectosListado', () => {
     expect(await screen.findByText('Torre Sur')).toBeInTheDocument();
   });
 
-  it('deletes a project after confirmation and refreshes the list', async () => {
+  it('deletes a project after confirming in the dialog and refreshes the list', async () => {
     proyectosApiMock.listar.mockResolvedValueOnce([proyectoExistente]).mockResolvedValueOnce([]);
     proyectosApiMock.eliminar.mockResolvedValue(undefined);
     const usuario = userEvent.setup();
@@ -113,14 +112,15 @@ describe('ProyectosListado', () => {
     await screen.findByText('Torre Norte');
 
     await usuario.click(screen.getByRole('button', { name: 'Eliminar' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await usuario.click(screen.getByRole('button', { name: 'Eliminar proyecto' }));
 
-    expect(window.confirm).toHaveBeenCalled();
     await waitFor(() => expect(proyectosApiMock.eliminar).toHaveBeenCalledWith('1'));
     expect(await screen.findByText('No hay proyectos registrados todavía.')).toBeInTheDocument();
+    expect(await screen.findByText('Proyecto eliminado correctamente.')).toBeInTheDocument();
   });
 
-  it('does not delete when the user cancels the confirmation (edge case)', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+  it('does not delete when the user cancels the confirmation dialog (edge case)', async () => {
     proyectosApiMock.listar.mockResolvedValue([proyectoExistente]);
     const usuario = userEvent.setup();
 
@@ -128,8 +128,10 @@ describe('ProyectosListado', () => {
     await screen.findByText('Torre Norte');
 
     await usuario.click(screen.getByRole('button', { name: 'Eliminar' }));
+    await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(proyectosApiMock.eliminar).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('shows an error message when deleting fails', async () => {
@@ -143,7 +145,23 @@ describe('ProyectosListado', () => {
     await screen.findByText('Torre Norte');
 
     await usuario.click(screen.getByRole('button', { name: 'Eliminar' }));
+    await usuario.click(screen.getByRole('button', { name: 'Eliminar proyecto' }));
 
     expect(await screen.findByText('El proyecto no existe.')).toBeInTheDocument();
+  });
+
+  it('shows a success toast after creating a project', async () => {
+    proyectosApiMock.listar.mockResolvedValueOnce([]).mockResolvedValueOnce([proyectoExistente]);
+    proyectosApiMock.crear.mockResolvedValue(proyectoExistente);
+    const usuario = userEvent.setup();
+
+    render(<ProyectosListado />);
+    await screen.findByText('No hay proyectos registrados todavía.');
+
+    await usuario.click(screen.getByRole('button', { name: 'Crear proyecto' }));
+    await usuario.type(screen.getByLabelText('Nombre del proyecto'), 'Torre Norte');
+    await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    expect(await screen.findByText('Proyecto creado correctamente.')).toBeInTheDocument();
   });
 });

@@ -1,39 +1,40 @@
+import { EmptyState } from '../ui/EmptyState';
+import { ProjectCard } from './ProjectCard';
 import type { Proyecto } from '../../types/proyecto';
 
 interface ListadoProyectosProps {
   readonly proyectos: Proyecto[];
   readonly onEditar: (proyecto: Proyecto) => void;
   readonly onEliminar: (proyecto: Proyecto) => void;
+  readonly accionVacio?: React.ReactNode;
 }
 
-export function ListadoProyectos({ proyectos, onEditar, onEliminar }: ListadoProyectosProps) {
+export function ListadoProyectos({
+  proyectos,
+  onEditar,
+  onEliminar,
+  accionVacio,
+}: ListadoProyectosProps) {
   if (proyectos.length === 0) {
-    return <p>No hay proyectos registrados todavía.</p>;
+    return (
+      <EmptyState
+        titulo="No hay proyectos registrados todavía."
+        descripcion="Cree su primer proyecto para comenzar a registrar actividades y dar seguimiento a su avance."
+        accion={accionVacio}
+      />
+    );
   }
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {proyectos.map((proyecto) => (
-          <tr key={proyecto.id}>
-            <td>{proyecto.nombre}</td>
-            <td>
-              <button type="button" onClick={() => onEditar(proyecto)}>
-                Editar
-              </button>
-              <button type="button" onClick={() => onEliminar(proyecto)}>
-                Eliminar
-              </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {proyectos.map((proyecto) => (
+        <ProjectCard
+          key={proyecto.id}
+          proyecto={proyecto}
+          onEditar={onEditar}
+          onEliminar={onEliminar}
+        />
+      ))}
+    </div>
   );
 }
