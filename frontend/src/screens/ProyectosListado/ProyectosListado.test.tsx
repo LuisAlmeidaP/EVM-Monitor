@@ -1,10 +1,16 @@
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
 import { ProyectosListado } from './ProyectosListado';
 import { proyectosApi } from '../../api/proyectosApi';
 import { ApiError } from '../../api/apiError';
 import type { Proyecto } from '../../types/proyecto';
+
+function renderConRouter(ui: ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
 vi.mock('../../api/proyectosApi', () => ({
   proyectosApi: {
@@ -28,7 +34,7 @@ describe('ProyectosListado', () => {
   it('shows a loading state while fetching and then renders the list', async () => {
     proyectosApiMock.listar.mockResolvedValue([proyectoExistente]);
 
-    render(<ProyectosListado />);
+    renderConRouter(<ProyectosListado />);
 
     expect(screen.getByText('Cargando proyectos...')).toBeInTheDocument();
 
@@ -41,7 +47,7 @@ describe('ProyectosListado', () => {
       new ApiError(500, { categoria: 'inesperado', mensaje: 'Ocurrió un error inesperado.', referencia: 'x' }),
     );
 
-    render(<ProyectosListado />);
+    renderConRouter(<ProyectosListado />);
 
     expect(await screen.findByText('Ocurrió un error inesperado.')).toBeInTheDocument();
   });
@@ -53,7 +59,7 @@ describe('ProyectosListado', () => {
     proyectosApiMock.crear.mockResolvedValue(proyectoExistente);
     const usuario = userEvent.setup();
 
-    render(<ProyectosListado />);
+    renderConRouter(<ProyectosListado />);
     await screen.findByText('No hay proyectos registrados todavía.');
 
     await usuario.click(screen.getByRole('button', { name: 'Crear proyecto' }));
@@ -71,7 +77,7 @@ describe('ProyectosListado', () => {
     proyectosApiMock.obtener.mockResolvedValue(proyectoActualizado);
     const usuario = userEvent.setup();
 
-    render(<ProyectosListado />);
+    renderConRouter(<ProyectosListado />);
     await screen.findByText('Torre Norte');
 
     await usuario.click(screen.getByRole('button', { name: 'Editar' }));
@@ -90,7 +96,7 @@ describe('ProyectosListado', () => {
     proyectosApiMock.editar.mockResolvedValue({ id: '1', nombre: 'Torre Sur' });
     const usuario = userEvent.setup();
 
-    render(<ProyectosListado />);
+    renderConRouter(<ProyectosListado />);
     await screen.findByText('Torre Norte');
 
     await usuario.click(screen.getByRole('button', { name: 'Editar' }));
@@ -108,7 +114,7 @@ describe('ProyectosListado', () => {
     proyectosApiMock.eliminar.mockResolvedValue(undefined);
     const usuario = userEvent.setup();
 
-    render(<ProyectosListado />);
+    renderConRouter(<ProyectosListado />);
     await screen.findByText('Torre Norte');
 
     await usuario.click(screen.getByRole('button', { name: 'Eliminar' }));
@@ -124,7 +130,7 @@ describe('ProyectosListado', () => {
     proyectosApiMock.listar.mockResolvedValue([proyectoExistente]);
     const usuario = userEvent.setup();
 
-    render(<ProyectosListado />);
+    renderConRouter(<ProyectosListado />);
     await screen.findByText('Torre Norte');
 
     await usuario.click(screen.getByRole('button', { name: 'Eliminar' }));
@@ -141,7 +147,7 @@ describe('ProyectosListado', () => {
     );
     const usuario = userEvent.setup();
 
-    render(<ProyectosListado />);
+    renderConRouter(<ProyectosListado />);
     await screen.findByText('Torre Norte');
 
     await usuario.click(screen.getByRole('button', { name: 'Eliminar' }));
@@ -155,7 +161,7 @@ describe('ProyectosListado', () => {
     proyectosApiMock.crear.mockResolvedValue(proyectoExistente);
     const usuario = userEvent.setup();
 
-    render(<ProyectosListado />);
+    renderConRouter(<ProyectosListado />);
     await screen.findByText('No hay proyectos registrados todavía.');
 
     await usuario.click(screen.getByRole('button', { name: 'Crear proyecto' }));

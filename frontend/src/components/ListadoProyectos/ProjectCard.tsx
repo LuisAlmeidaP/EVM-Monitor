@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import type { Proyecto } from '../../types/proyecto';
 
@@ -12,7 +13,10 @@ export function ProjectCard({ proyecto, onEditar, onEliminar }: ProjectCardProps
 
   return (
     <article className="group flex flex-col justify-between gap-4 rounded-2xl border border-borde bg-superficie p-5 shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex items-start gap-3.5">
+      <Link
+        to={`/proyectos/${proyecto.id}/actividades`}
+        className="flex items-start gap-3.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+      >
         <span
           aria-hidden="true"
           className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-acento-suave font-display text-lg text-acento"
@@ -26,8 +30,9 @@ export function ProjectCard({ proyecto, onEditar, onEliminar }: ProjectCardProps
           <p className="mt-0.5 truncate text-xs text-apagado" title={proyecto.id}>
             ID: {proyecto.id}
           </p>
+          <p className="mt-1 text-xs font-medium text-acento">Ver actividades →</p>
         </div>
-      </div>
+      </Link>
       <div className="flex justify-end gap-2 border-t border-borde pt-3.5">
         <Button variant="ghost" onClick={() => onEditar(proyecto)}>
           Editar
