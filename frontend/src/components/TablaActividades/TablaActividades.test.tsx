@@ -1,8 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { TablaActividades } from './TablaActividades';
 import type { Actividad } from '../../types/actividad';
+import type { ReactElement } from 'react';
+
+function renderConRouter(elemento: ReactElement) {
+  return render(<MemoryRouter>{elemento}</MemoryRouter>);
+}
 
 const actividades: Actividad[] = [
   {
@@ -27,13 +33,13 @@ const actividades: Actividad[] = [
 
 describe('TablaActividades', () => {
   it('shows a message when there are no activities (edge case)', () => {
-    render(<TablaActividades actividades={[]} onEditar={vi.fn()} onEliminar={vi.fn()} />);
+    renderConRouter(<TablaActividades actividades={[]} onEditar={vi.fn()} onEliminar={vi.fn()} />);
 
     expect(screen.getByText('No hay actividades registradas todavía.')).toBeInTheDocument();
   });
 
   it('renders one row per activity with its data', () => {
-    render(<TablaActividades actividades={actividades} onEditar={vi.fn()} onEliminar={vi.fn()} />);
+    renderConRouter(<TablaActividades actividades={actividades} onEditar={vi.fn()} onEliminar={vi.fn()} />);
 
     expect(screen.getByText('Excavación')).toBeInTheDocument();
     expect(screen.getByText('Cimentación')).toBeInTheDocument();
@@ -44,7 +50,7 @@ describe('TablaActividades', () => {
   it('calls onEditar with the corresponding activity when its Editar button is clicked', async () => {
     const onEditar = vi.fn();
     const usuario = userEvent.setup();
-    render(<TablaActividades actividades={actividades} onEditar={onEditar} onEliminar={vi.fn()} />);
+    renderConRouter(<TablaActividades actividades={actividades} onEditar={onEditar} onEliminar={vi.fn()} />);
 
     await usuario.click(screen.getAllByRole('button', { name: 'Editar' })[0]);
 
@@ -54,7 +60,7 @@ describe('TablaActividades', () => {
   it('calls onEliminar with the corresponding activity when its Eliminar button is clicked', async () => {
     const onEliminar = vi.fn();
     const usuario = userEvent.setup();
-    render(
+    renderConRouter(
       <TablaActividades actividades={actividades} onEditar={vi.fn()} onEliminar={onEliminar} />,
     );
 
