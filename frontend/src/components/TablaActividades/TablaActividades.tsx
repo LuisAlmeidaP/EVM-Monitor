@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { formatearNumero } from '../../utils/format';
@@ -56,6 +57,12 @@ export function TablaActividades({
               </td>
               <td className="px-4 py-3 text-right">
                 <div className="flex justify-end gap-2">
+                  <Link
+                    to={`/actividades/${actividad.id}/analisis-evm`}
+                    className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium text-apagado transition-colors hover:bg-borde/50 hover:text-tinta"
+                  >
+                    Ver análisis EVM
+                  </Link>
                   <Button variant="ghost" onClick={() => onEditar(actividad)}>
                     Editar
                   </Button>

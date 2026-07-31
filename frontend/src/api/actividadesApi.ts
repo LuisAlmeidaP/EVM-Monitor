@@ -1,5 +1,6 @@
 import { httpClient } from './httpClient';
 import type { Actividad, ActividadInput } from '../types/actividad';
+import type { AnalisisEvmActividad } from '../types/analisisEvm';
 
 export const actividadesApi = {
   listarPorProyecto(proyectoId: string): Promise<Actividad[]> {
@@ -8,6 +9,10 @@ export const actividadesApi = {
 
   obtener(id: string): Promise<Actividad> {
     return httpClient.get<Actividad>(`/actividades/${id}`);
+  },
+
+  obtenerAnalisisEvm(id: string): Promise<AnalisisEvmActividad> {
+    return httpClient.get<AnalisisEvmActividad>(`/actividades/${id}/analisis-evm`);
   },
 
   crear(proyectoId: string, datos: ActividadInput): Promise<Actividad> {
