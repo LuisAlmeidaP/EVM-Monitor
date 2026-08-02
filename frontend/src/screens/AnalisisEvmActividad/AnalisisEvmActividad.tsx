@@ -51,7 +51,12 @@ export function AnalisisEvmActividad() {
           </header>
 
           <div className="mb-6">
-            <AlertaDesviacion analisis={analisis} />
+            <AlertaDesviacion
+              cv={analisis.indicadores.cv}
+              sv={analisis.indicadores.sv}
+              estadoCosto={analisis.interpretacion.estadoCosto}
+              estadoCronograma={analisis.interpretacion.estadoCronograma}
+            />
           </div>
 
           <section aria-label="Indicadores EVM" className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -122,7 +127,14 @@ export function AnalisisEvmActividad() {
                 Compara cuánto se planeó, cuánto se ha ganado por avance y cuánto se ha gastado, contra el
                 presupuesto total.
               </p>
-              <GraficoValorEvm analisis={analisis} />
+              <GraficoValorEvm
+                pv={analisis.indicadores.pv}
+                ev={analisis.indicadores.ev}
+                ac={analisis.datosAvance.costoReal}
+                bac={analisis.datosAvance.bac}
+                estadoCosto={analisis.interpretacion.estadoCosto}
+                estadoCronograma={analisis.interpretacion.estadoCronograma}
+              />
             </div>
 
             <div className="rounded-2xl border border-borde bg-superficie p-5 shadow-sm">
@@ -144,7 +156,7 @@ export function AnalisisEvmActividad() {
                 />
               </div>
               <div className="mt-4">
-                <GraficoComparativoIndices analisis={analisis} />
+                <GraficoComparativoIndices cpi={analisis.indicadores.cpi} spi={analisis.indicadores.spi} />
               </div>
             </div>
           </section>

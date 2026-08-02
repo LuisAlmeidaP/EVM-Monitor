@@ -55,12 +55,16 @@ describe('ListadoProyectos', () => {
     expect(onEliminar).toHaveBeenCalledWith(proyectos[1]);
   });
 
-  it('links each project card to its activities screen', () => {
+  it('links each project card to its dashboard, and offers a secondary link to its activities screen', () => {
     renderConRouter(
       <ListadoProyectos proyectos={proyectos} onEditar={vi.fn()} onEliminar={vi.fn()} />,
     );
 
     expect(screen.getByRole('link', { name: /Torre Norte/ })).toHaveAttribute(
+      'href',
+      '/proyectos/1/dashboard',
+    );
+    expect(screen.getAllByRole('link', { name: 'Ver actividades' })[0]).toHaveAttribute(
       'href',
       '/proyectos/1/actividades',
     );

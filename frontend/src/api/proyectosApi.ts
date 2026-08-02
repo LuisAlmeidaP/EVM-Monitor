@@ -1,5 +1,6 @@
 import { httpClient } from './httpClient';
 import type { Proyecto } from '../types/proyecto';
+import type { AnalisisConsolidadoProyecto } from '../types/analisisEvm';
 
 export const proyectosApi = {
   listar(): Promise<Proyecto[]> {
@@ -8,6 +9,10 @@ export const proyectosApi = {
 
   obtener(id: string): Promise<Proyecto> {
     return httpClient.get<Proyecto>(`/proyectos/${id}`);
+  },
+
+  obtenerAnalisisEvm(id: string): Promise<AnalisisConsolidadoProyecto> {
+    return httpClient.get<AnalisisConsolidadoProyecto>(`/proyectos/${id}/analisis-evm`);
   },
 
   crear(nombre: string): Promise<Proyecto> {

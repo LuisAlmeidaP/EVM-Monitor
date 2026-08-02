@@ -3,10 +3,10 @@ import type { TooltipContentProps } from 'recharts';
 import { formatearIndice } from '../../utils/format';
 import { ANIMACION_GRAFICOS_ACTIVA } from '../../utils/animacion';
 import { obtenerPaletaEstado, tonoPorIndice } from '../../utils/estadoColores';
-import type { AnalisisEvmActividad } from '../../types/analisisEvm';
 
 interface GraficoComparativoIndicesProps {
-  readonly analisis: AnalisisEvmActividad;
+  readonly cpi: number | null;
+  readonly spi: number | null;
 }
 
 interface PuntoIndice {
@@ -36,8 +36,7 @@ function TooltipIndices({ active, payload }: TooltipContentProps) {
   );
 }
 
-export function GraficoComparativoIndices({ analisis }: GraficoComparativoIndicesProps) {
-  const { cpi, spi } = analisis.indicadores;
+export function GraficoComparativoIndices({ cpi, spi }: GraficoComparativoIndicesProps) {
   const datos: PuntoIndice[] = [
     { nombre: 'CPI', valor: cpi },
     { nombre: 'SPI', valor: spi },

@@ -13,7 +13,11 @@ test.describe('Análisis EVM de Actividad', () => {
     await page.getByRole('button', { name: 'Guardar' }).click();
     await expect(page.getByText(nombreProyecto)).toBeVisible();
 
-    await page.getByRole('link', { name: new RegExp(nombreProyecto) }).click();
+    await page
+      .locator('article')
+      .filter({ hasText: nombreProyecto })
+      .getByRole('link', { name: 'Ver actividades' })
+      .click();
     await page.getByRole('button', { name: 'Nueva actividad' }).click();
     await page.getByLabel('Nombre de la actividad').fill(nombreActividad);
     await page.getByLabel('Presupuesto planificado (BAC)').fill('100000');

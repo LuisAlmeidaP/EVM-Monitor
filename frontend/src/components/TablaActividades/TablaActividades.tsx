@@ -7,8 +7,8 @@ import type { Actividad } from '../../types/actividad';
 
 interface TablaActividadesProps {
   readonly actividades: Actividad[];
-  readonly onEditar: (actividad: Actividad) => void;
-  readonly onEliminar: (actividad: Actividad) => void;
+  readonly onEditar?: (actividad: Actividad) => void;
+  readonly onEliminar?: (actividad: Actividad) => void;
   readonly accionVacio?: ReactNode;
 }
 
@@ -63,16 +63,20 @@ export function TablaActividades({
                   >
                     Ver análisis EVM
                   </Link>
-                  <Button variant="ghost" onClick={() => onEditar(actividad)}>
-                    Editar
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="hover:bg-peligro-suave hover:text-peligro"
-                    onClick={() => onEliminar(actividad)}
-                  >
-                    Eliminar
-                  </Button>
+                  {onEditar && (
+                    <Button variant="ghost" onClick={() => onEditar(actividad)}>
+                      Editar
+                    </Button>
+                  )}
+                  {onEliminar && (
+                    <Button
+                      variant="ghost"
+                      className="hover:bg-peligro-suave hover:text-peligro"
+                      onClick={() => onEliminar(actividad)}
+                    >
+                      Eliminar
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

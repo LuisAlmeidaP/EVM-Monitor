@@ -1,8 +1,11 @@
 import { formatearNumero } from '../../utils/format';
-import type { AnalisisEvmActividad } from '../../types/analisisEvm';
+import type { EstadoCosto, EstadoCronograma } from '../../types/analisisEvm';
 
 interface AlertaDesviacionProps {
-  readonly analisis: AnalisisEvmActividad;
+  readonly cv: number;
+  readonly sv: number;
+  readonly estadoCosto: EstadoCosto | null;
+  readonly estadoCronograma: EstadoCronograma | null;
 }
 
 interface Alerta {
@@ -10,29 +13,28 @@ interface Alerta {
   readonly mensaje: string;
 }
 
-function construirAlertas(analisis: AnalisisEvmActividad): Alerta[] {
+function construirAlertas({ cv, sv, estadoCosto, estadoCronograma }: AlertaDesviacionProps): Alerta[] {
   const alertas: Alerta[] = [];
-  const { interpretacion, indicadores } = analisis;
 
-  if (interpretacion.estadoCosto === 'sobre_presupuesto') {
+  if (estadoCosto === 'sobre_presupuesto') {
     alertas.push({
       id: 'costo',
-      mensaje: `Sobrecosto: el costo real supera en ${formatearNumero(Math.abs(indicadores.cv))} al valor ganado por el avance logrado.`,
+      mensaje: `Sobrecosto: el costo real supera en ${formatearNumero(Math.abs(cv))} al valor ganado por el avance logrado.`,
     });
   }
 
-  if (interpretacion.estadoCronograma === 'atrasado') {
+  if (estadoCronograma === 'atrasado') {
     alertas.push({
       id: 'cronograma',
-      mensaje: `Retraso: el avance real equivale a ${formatearNumero(Math.abs(indicadores.sv))} menos de lo que debería llevarse a esta fecha.`,
+      mensaje: `Retraso: el avance real equivale a ${formatearNumero(Math.abs(sv))} menos de lo que debería llevarse a esta fecha.`,
     });
   }
 
   return alertas;
 }
 
-export function AlertaDesviacion({ analisis }: AlertaDesviacionProps) {
-  const alertas = construirAlertas(analisis);
+export function AlertaDesviacion(props: AlertaDesviacionProps) {
+  const alertas = construirAlertas(props);
 
   if (alertas.length === 0) {
     return null;

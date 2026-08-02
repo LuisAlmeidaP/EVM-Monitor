@@ -14,7 +14,11 @@ test.describe('Gestión de Actividades', () => {
     await page.getByRole('button', { name: 'Guardar' }).click();
     await expect(page.getByText(nombreProyecto)).toBeVisible();
 
-    await page.getByRole('link', { name: new RegExp(nombreProyecto) }).click();
+    await page
+      .locator('article')
+      .filter({ hasText: nombreProyecto })
+      .getByRole('link', { name: 'Ver actividades' })
+      .click();
     await expect(page.getByRole('heading', { name: nombreProyecto })).toBeVisible();
     await expect(page.getByText('No hay actividades registradas todavía.')).toBeVisible();
 
@@ -55,7 +59,11 @@ test.describe('Gestión de Actividades', () => {
     await page.getByRole('button', { name: 'Crear proyecto' }).click();
     await page.getByLabel('Nombre del proyecto').fill(`${nombreProyecto}-validacion`);
     await page.getByRole('button', { name: 'Guardar' }).click();
-    await page.getByRole('link', { name: new RegExp(`${nombreProyecto}-validacion`) }).click();
+    await page
+      .locator('article')
+      .filter({ hasText: `${nombreProyecto}-validacion` })
+      .getByRole('link', { name: 'Ver actividades' })
+      .click();
 
     await page.getByRole('button', { name: 'Nueva actividad' }).click();
     await page.getByRole('button', { name: 'Guardar' }).click();

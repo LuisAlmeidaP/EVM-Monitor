@@ -14,7 +14,7 @@ export function ProjectCard({ proyecto, onEditar, onEliminar }: ProjectCardProps
   return (
     <article className="group flex flex-col justify-between gap-4 rounded-2xl border border-borde bg-superficie p-5 shadow-sm transition-shadow hover:shadow-md">
       <Link
-        to={`/proyectos/${proyecto.id}/actividades`}
+        to={`/proyectos/${proyecto.id}/dashboard`}
         className="flex items-start gap-3.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
       >
         <span
@@ -30,20 +30,28 @@ export function ProjectCard({ proyecto, onEditar, onEliminar }: ProjectCardProps
           <p className="mt-0.5 truncate text-xs text-apagado" title={proyecto.id}>
             ID: {proyecto.id}
           </p>
-          <p className="mt-1 text-xs font-medium text-acento">Ver actividades →</p>
+          <p className="mt-1 text-xs font-medium text-acento">Ver dashboard →</p>
         </div>
       </Link>
-      <div className="flex justify-end gap-2 border-t border-borde pt-3.5">
-        <Button variant="ghost" onClick={() => onEditar(proyecto)}>
-          Editar
-        </Button>
-        <Button
-          variant="ghost"
-          className="hover:bg-peligro-suave hover:text-peligro"
-          onClick={() => onEliminar(proyecto)}
+      <div className="flex items-center justify-between gap-2 border-t border-borde pt-3.5">
+        <Link
+          to={`/proyectos/${proyecto.id}/actividades`}
+          className="text-xs font-medium text-apagado hover:text-tinta"
         >
-          Eliminar
-        </Button>
+          Ver actividades
+        </Link>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={() => onEditar(proyecto)}>
+            Editar
+          </Button>
+          <Button
+            variant="ghost"
+            className="hover:bg-peligro-suave hover:text-peligro"
+            onClick={() => onEliminar(proyecto)}
+          >
+            Eliminar
+          </Button>
+        </div>
       </div>
     </article>
   );
