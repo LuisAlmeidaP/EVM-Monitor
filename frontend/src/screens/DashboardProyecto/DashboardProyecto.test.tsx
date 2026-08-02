@@ -1,4 +1,4 @@
-import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
+import { render, screen, waitFor, waitForElementToBeRemoved, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,7 +7,7 @@ import { actividadesApi } from '../../api/actividadesApi';
 import { proyectosApi } from '../../api/proyectosApi';
 import { ApiError } from '../../api/apiError';
 import type { Actividad } from '../../types/actividad';
-import type { AnalisisConsolidadoProyecto } from '../../types/analisisEvm';
+import type { AnalisisConsolidadoProyecto, AnalisisEvmActividad } from '../../types/analisisEvm';
 import type { Proyecto } from '../../types/proyecto';
 
 vi.mock('../../api/actividadesApi', () => ({
@@ -93,6 +93,32 @@ const ANALISIS_UNA_ACTIVIDAD: AnalisisConsolidadoProyecto = {
   estadoGeneral: 'critico',
 };
 
+function analisisIndividualPorDefecto(actividad: Actividad): AnalisisEvmActividad {
+  return {
+    actividadId: actividad.id,
+    proyectoId: actividad.proyectoId,
+    nombre: actividad.nombre,
+    datosAvance: {
+      bac: actividad.bac,
+      porcentajeAvancePlanificado: actividad.porcentajeAvancePlanificado,
+      porcentajeAvanceReal: actividad.porcentajeAvanceReal,
+      costoReal: actividad.costoReal,
+    },
+    indicadores: {
+      pv: (actividad.porcentajeAvancePlanificado / 100) * actividad.bac,
+      ev: (actividad.porcentajeAvanceReal / 100) * actividad.bac,
+      cv: 0,
+      sv: 0,
+      cpi: 1,
+      spi: 1,
+      eac: actividad.bac,
+      vac: 0,
+    },
+    interpretacion: { estadoCosto: 'en_presupuesto', estadoCronograma: 'a_tiempo' },
+    estadoGeneral: 'saludable',
+  };
+}
+
 function renderPantalla() {
   return render(
     <MemoryRouter initialEntries={['/proyectos/p1/dashboard']}>
@@ -107,6 +133,12 @@ describe('DashboardProyecto', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     proyectosApiMock.obtener.mockResolvedValue(proyecto);
+    // Análisis individual por actividad (usado para la gráfica comparativa
+    // PV/EV/AC): por defecto responde con datos coherentes para cualquier id.
+    actividadesApiMock.obtenerAnalisisEvm.mockImplementation((id: string) => {
+      const actividad = actividades.find((candidata) => candidata.id === id) ?? excavacion;
+      return Promise.resolve(analisisIndividualPorDefecto(actividad));
+    });
   });
 
   it('shows a skeleton loading state while fetching the initial data', async () => {
@@ -181,10 +213,12 @@ describe('DashboardProyecto', () => {
     expect(screen.getByText('Valor planificado, ganado y real')).toBeInTheDocument();
     expect(screen.getByText('Índices de desempeño')).toBeInTheDocument();
     expect(screen.getByText('Distribución del presupuesto')).toBeInTheDocument();
+    expect(screen.getByText('PV, EV y AC por actividad')).toBeInTheDocument();
     await waitFor(() =>
       expect(container.querySelectorAll('.recharts-wrapper').length).toBeGreaterThan(0),
     );
-    expect(screen.getByText('Cimentación')).toBeInTheDocument();
+    // "Cimentación" now appears both in the comparison chart and the table below
+    expect(screen.getAllByText('Cimentación').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: 'Editar' }).length).toBeGreaterThan(0);
   });
 
@@ -232,6 +266,73 @@ describe('DashboardProyecto', () => {
     );
   });
 
+  describe('comparative PV/EV/AC per-activity chart', () => {
+    it('renders the section with PV/EV/AC sourced from the individual activity analysis endpoint, not recalculated', async () => {
+      actividadesApiMock.listarPorProyecto.mockResolvedValue(actividades);
+      proyectosApiMock.obtenerAnalisisEvm.mockResolvedValue(ANALISIS);
+      actividadesApiMock.obtenerAnalisisEvm.mockImplementation((id: string) => {
+        const actividad = actividades.find((candidata) => candidata.id === id) ?? excavacion;
+        return Promise.resolve({
+          ...analisisIndividualPorDefecto(actividad),
+          indicadores: {
+            ...analisisIndividualPorDefecto(actividad).indicadores,
+            pv: actividad.id === 'a1' ? 50_000 : 60_000,
+            ev: actividad.id === 'a1' ? 40_000 : 70_000,
+          },
+        });
+      });
+
+      const { container } = renderPantalla();
+      await screen.findByRole('heading', { name: 'Torre Norte' });
+
+      expect(screen.getByText('PV, EV y AC por actividad')).toBeInTheDocument();
+      expect(actividadesApiMock.obtenerAnalisisEvm).toHaveBeenCalledWith('a1');
+      expect(actividadesApiMock.obtenerAnalisisEvm).toHaveBeenCalledWith('a2');
+      const seccion = screen.getByText('PV, EV y AC por actividad').closest('div') as HTMLElement;
+      await waitFor(() =>
+        expect(container.querySelectorAll('.recharts-bar-rectangle').length).toBeGreaterThan(0),
+      );
+      expect(within(seccion).getByText('Excavación')).toBeInTheDocument();
+      expect(within(seccion).getByText('Cimentación')).toBeInTheDocument();
+    });
+
+    it('updates automatically after an activity is edited, re-fetching each activity individual analysis again', async () => {
+      const excavacionActualizada: Actividad = { ...excavacion, porcentajeAvanceReal: 100 };
+      actividadesApiMock.listarPorProyecto
+        .mockResolvedValueOnce([excavacion])
+        .mockResolvedValueOnce([excavacionActualizada]);
+      actividadesApiMock.obtener.mockResolvedValue(excavacion);
+      proyectosApiMock.obtenerAnalisisEvm
+        .mockResolvedValueOnce(ANALISIS_UNA_ACTIVIDAD)
+        .mockResolvedValueOnce({ ...ANALISIS_UNA_ACTIVIDAD, estadoGeneral: 'saludable' });
+      actividadesApiMock.editar.mockResolvedValue(excavacionActualizada);
+      const usuario = userEvent.setup();
+
+      renderPantalla();
+      await screen.findByText('Crítico');
+      expect(actividadesApiMock.obtenerAnalisisEvm).toHaveBeenCalledTimes(1);
+
+      await usuario.click(screen.getByRole('button', { name: 'Editar' }));
+      const campoReal = await screen.findByLabelText('% Avance real');
+      await usuario.clear(campoReal);
+      await usuario.type(campoReal, '100');
+      await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+      await screen.findByText('Saludable');
+      // Una llamada más por la actividad tras la mutación (recarga completa del comparativo)
+      expect(actividadesApiMock.obtenerAnalisisEvm).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not call the individual analysis endpoint when the project has no activities (edge case)', async () => {
+      actividadesApiMock.listarPorProyecto.mockResolvedValue([]);
+
+      renderPantalla();
+
+      await screen.findByText('Este proyecto no tiene actividades registradas todavía.');
+      expect(actividadesApiMock.obtenerAnalisisEvm).not.toHaveBeenCalled();
+    });
+  });
+
   describe('automatic refresh after a mutation', () => {
     it('creates an activity inline and refreshes the table, KPI cards and overall status without navigating away', async () => {
       actividadesApiMock.listarPorProyecto
@@ -258,7 +359,7 @@ describe('DashboardProyecto', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       // Consolidated status flips from the single-activity "Crítico" to the two-activity "En riesgo"
       expect(await screen.findByText('En riesgo')).toBeInTheDocument();
-      expect(screen.getByText('Cimentación')).toBeInTheDocument();
+      expect(screen.getAllByText('Cimentación').length).toBeGreaterThan(0);
       expect(actividadesApiMock.listarPorProyecto).toHaveBeenCalledTimes(2);
       expect(proyectosApiMock.obtenerAnalisisEvm).toHaveBeenCalledTimes(2);
       // The project itself is only fetched once — mutations never re-fetch it

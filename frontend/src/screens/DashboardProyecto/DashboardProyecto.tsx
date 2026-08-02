@@ -16,6 +16,7 @@ import { GraficoValorEvm } from '../../components/GraficoValorEvm/GraficoValorEv
 import { GaugeIndiceEvm } from '../../components/GaugeIndiceEvm/GaugeIndiceEvm';
 import { GraficoComparativoIndices } from '../../components/GraficoComparativoIndices/GraficoComparativoIndices';
 import { GraficoDistribucionPresupuesto } from '../../components/GraficoDistribucionPresupuesto/GraficoDistribucionPresupuesto';
+import { GraficoComparativoActividades } from '../../components/GraficoComparativoActividades/GraficoComparativoActividades';
 import { TablaActividades } from '../../components/TablaActividades/TablaActividades';
 import { actividadesApi } from '../../api/actividadesApi';
 import { obtenerMensajeDeError } from '../../api/apiError';
@@ -33,6 +34,7 @@ export function DashboardProyecto() {
     proyecto,
     analisis,
     actividades,
+    comparativoActividades,
     cargando,
     actualizando,
     error,
@@ -305,6 +307,17 @@ export function DashboardProyecto() {
                   <div className="mx-auto max-w-xs">
                     <GraficoDistribucionPresupuesto bacTotal={bacTotal} acTotal={acTotal} />
                   </div>
+                </div>
+              </section>
+
+              <section aria-label="Comparación de actividades" className="mb-8">
+                <div className="rounded-2xl border border-borde bg-superficie p-5 shadow-sm">
+                  <p className="mb-2 font-display text-lg text-tinta">PV, EV y AC por actividad</p>
+                  <p className="mb-3 text-xs text-apagado">
+                    Compara el valor planificado, ganado y el costo real de cada actividad para detectar de
+                    un vistazo sobrecostos, adelantos o retrasos.
+                  </p>
+                  <GraficoComparativoActividades actividades={comparativoActividades} />
                 </div>
               </section>
 

@@ -3,13 +3,14 @@ import { actividadesApi } from '../../api/actividadesApi';
 import { proyectosApi } from '../../api/proyectosApi';
 import { obtenerMensajeDeError } from '../../api/apiError';
 import type { Actividad, ActividadInput } from '../../types/actividad';
-import type { AnalisisConsolidadoProyecto } from '../../types/analisisEvm';
+import type { ActividadComparativaEvm, AnalisisConsolidadoProyecto } from '../../types/analisisEvm';
 import type { Proyecto } from '../../types/proyecto';
 
 interface UseDashboardProyectoResult {
   readonly proyecto: Proyecto | null;
   readonly analisis: AnalisisConsolidadoProyecto | null;
   readonly actividades: Actividad[];
+  readonly comparativoActividades: ActividadComparativaEvm[];
   readonly cargando: boolean;
   readonly actualizando: boolean;
   readonly error: string | null;
@@ -29,20 +30,50 @@ export function useDashboardProyecto(proyectoId: string): UseDashboardProyectoRe
   const [proyecto, setProyecto] = useState<Proyecto | null>(null);
   const [analisis, setAnalisis] = useState<AnalisisConsolidadoProyecto | null>(null);
   const [actividades, setActividades] = useState<Actividad[]>([]);
+  const [comparativoActividades, setComparativoActividades] = useState<ActividadComparativaEvm[]>([]);
   const [cargando, setCargando] = useState(true);
   const [actualizando, setActualizando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * PV y EV por actividad son indicadores calculados por el backend, no
+   * campos crudos: se obtienen del mismo endpoint de análisis por actividad
+   * ya usado desde F7.2 (GET /actividades/:id/analisis-evm), uno por
+   * actividad en paralelo — reutiliza datos ya expuestos por la aplicación
+   * en vez de recalcular la fórmula EVM en el frontend.
+   */
   const cargarDatosEvm = useCallback(async (): Promise<void> => {
     const datosActividades = await actividadesApi.listarPorProyecto(proyectoId);
     setActividades(datosActividades);
 
-    if (datosActividades.length > 0) {
-      const datosAnalisis = await proyectosApi.obtenerAnalisisEvm(proyectoId);
-      setAnalisis(datosAnalisis);
-    } else {
+    if (datosActividades.length === 0) {
       setAnalisis(null);
+      setComparativoActividades([]);
+      return;
     }
+
+    const [datosAnalisis, analisisPorActividad] = await Promise.all([
+      proyectosApi.obtenerAnalisisEvm(proyectoId),
+      Promise.all(
+        datosActividades.map((actividad) => actividadesApi.obtenerAnalisisEvm(actividad.id)),
+      ),
+    ]);
+    setAnalisis(datosAnalisis);
+    setComparativoActividades(
+      datosActividades.map((actividad, indice) => {
+        const analisisActividad = analisisPorActividad[indice];
+        return {
+          id: actividad.id,
+          nombre: actividad.nombre,
+          pv: analisisActividad.indicadores.pv,
+          ev: analisisActividad.indicadores.ev,
+          ac: actividad.costoReal,
+          cv: analisisActividad.indicadores.cv,
+          sv: analisisActividad.indicadores.sv,
+          estadoGeneral: analisisActividad.estadoGeneral,
+        };
+      }),
+    );
   }, [proyectoId]);
 
   const cargarTodo = useCallback(async (): Promise<void> => {
@@ -108,6 +139,7 @@ export function useDashboardProyecto(proyectoId: string): UseDashboardProyectoRe
     proyecto,
     analisis,
     actividades,
+    comparativoActividades,
     cargando,
     actualizando,
     error,

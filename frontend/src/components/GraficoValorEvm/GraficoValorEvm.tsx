@@ -13,7 +13,7 @@ import {
 import type { DefaultLegendContentProps, TooltipContentProps } from 'recharts';
 import { formatearNumero } from '../../utils/format';
 import { ANIMACION_GRAFICOS_ACTIVA } from '../../utils/animacion';
-import { obtenerPaletaEstado } from '../../utils/estadoColores';
+import { obtenerPaletaEstado, tonoPorEstadoCosto, tonoPorEstadoCronograma } from '../../utils/estadoColores';
 import type { TonoEstado } from '../../utils/estadoColores';
 import type { EstadoCosto, EstadoCronograma } from '../../types/analisisEvm';
 
@@ -31,18 +31,6 @@ interface PuntoValor {
   readonly descripcion: string;
   readonly valor: number;
   readonly tono: TonoEstado;
-}
-
-function tonoParaCronograma(estadoCronograma: EstadoCronograma | null): TonoEstado {
-  if (estadoCronograma === null) return 'neutral';
-  if (estadoCronograma === 'atrasado') return 'critico';
-  return 'correcto';
-}
-
-function tonoParaCosto(estadoCosto: EstadoCosto | null): TonoEstado {
-  if (estadoCosto === null) return 'neutral';
-  if (estadoCosto === 'sobre_presupuesto') return 'critico';
-  return 'correcto';
 }
 
 function TooltipValor({ active, payload }: TooltipContentProps) {
@@ -97,13 +85,13 @@ export function GraficoValorEvm({ pv, ev, ac, bac, estadoCosto, estadoCronograma
       nombre: 'EV',
       descripcion: 'Valor ganado según el avance real',
       valor: ev,
-      tono: tonoParaCronograma(estadoCronograma),
+      tono: tonoPorEstadoCronograma(estadoCronograma),
     },
     {
       nombre: 'AC',
       descripcion: 'Costo real incurrido',
       valor: ac,
-      tono: tonoParaCosto(estadoCosto),
+      tono: tonoPorEstadoCosto(estadoCosto),
     },
   ];
 
