@@ -4,7 +4,7 @@ const nombreProyecto = `Proyecto Dashboard E2E ${Date.now()}`;
 const nombreProyectoVacio = `Proyecto Vacío E2E ${Date.now()}`;
 
 test.describe('Dashboard Consolidado del Proyecto', () => {
-  test('un usuario puede navegar desde el listado de proyectos hasta el dashboard con el análisis consolidado', async ({
+  test('un usuario puede crear actividades directamente desde el dashboard y ver el análisis consolidado', async ({
     page,
   }) => {
     await page.goto('/');
@@ -15,18 +15,18 @@ test.describe('Dashboard Consolidado del Proyecto', () => {
 
     await page.getByRole('link', { name: new RegExp(nombreProyecto) }).click();
     await expect(page.getByRole('heading', { name: nombreProyecto })).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard$/);
 
-    // Sin actividades: estado vacío con CTA
+    // Sin actividades: estado vacío cuyo CTA abre el formulario en el propio dashboard
     await expect(page.getByText('Este proyecto no tiene actividades registradas todavía.')).toBeVisible();
-    await page.getByRole('link', { name: 'Crear la primera actividad' }).click();
-    await expect(page).toHaveURL(/\/actividades$/);
+    await page.getByRole('button', { name: 'Crear la primera actividad' }).click();
+    await expect(page.getByRole('dialog', { name: 'Nueva actividad' })).toBeVisible();
 
-    // Crear dos actividades desde la pantalla de gestión
+    // Crear dos actividades sin salir nunca del dashboard
     for (const actividad of [
       { nombre: 'Excavación', bac: '100000', planificado: '50', real: '40', costo: '50000' },
       { nombre: 'Cimentación', bac: '200000', planificado: '30', real: '35', costo: '65000' },
     ]) {
-      await page.getByRole('button', { name: 'Nueva actividad' }).click();
       await page.getByLabel('Nombre de la actividad').fill(actividad.nombre);
       await page.getByLabel('Presupuesto planificado (BAC)').fill(actividad.bac);
       await page.getByLabel('% Avance planificado').fill(actividad.planificado);
@@ -34,10 +34,12 @@ test.describe('Dashboard Consolidado del Proyecto', () => {
       await page.getByLabel('Costo real incurrido (AC)').fill(actividad.costo);
       await page.getByRole('button', { name: 'Guardar' }).click();
       await expect(page.getByText(actividad.nombre)).toBeVisible();
+      await expect(page).toHaveURL(/\/dashboard$/);
+      if (actividad.nombre !== 'Cimentación') {
+        await page.getByRole('button', { name: 'Nueva actividad' }).click();
+      }
     }
 
-    // Volver al dashboard consolidado
-    await page.getByRole('button', { name: 'Ver dashboard' }).click();
     await expect(page.getByRole('heading', { name: nombreProyecto })).toBeVisible();
     await expect(page.getByText('En riesgo', { exact: true })).toBeVisible();
 
@@ -56,16 +58,11 @@ test.describe('Dashboard Consolidado del Proyecto', () => {
     await expect(page.getByText('Distribución del presupuesto')).toBeVisible();
     await expect(page.locator('.recharts-wrapper').first()).toBeVisible();
 
-    // Integración con actividades: tabla de solo lectura + enlace de análisis por actividad
-    await expect(page.getByRole('row').filter({ hasText: 'Excavación' })).toBeVisible();
-    await expect(
-      page.getByRole('row').filter({ hasText: 'Excavación' }).getByRole('button', { name: 'Editar' }),
-    ).toHaveCount(0);
-    await page
-      .getByRole('row')
-      .filter({ hasText: 'Excavación' })
-      .getByRole('link', { name: 'Ver análisis EVM' })
-      .click();
+    // Integración con actividades: tabla interactiva + enlace de análisis por actividad
+    const filaExcavacion = page.getByRole('row').filter({ hasText: 'Excavación' });
+    await expect(filaExcavacion).toBeVisible();
+    await expect(filaExcavacion.getByRole('button', { name: 'Editar' })).toBeVisible();
+    await filaExcavacion.getByRole('link', { name: 'Ver análisis EVM' }).click();
     await expect(page.getByRole('heading', { name: 'Excavación' })).toBeVisible();
   });
 

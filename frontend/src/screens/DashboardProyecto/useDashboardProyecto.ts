@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { actividadesApi } from '../../api/actividadesApi';
 import { proyectosApi } from '../../api/proyectosApi';
 import { obtenerMensajeDeError } from '../../api/apiError';
-import type { Actividad } from '../../types/actividad';
+import type { Actividad, ActividadInput } from '../../types/actividad';
 import type { AnalisisConsolidadoProyecto } from '../../types/analisisEvm';
 import type { Proyecto } from '../../types/proyecto';
 
@@ -11,8 +11,12 @@ interface UseDashboardProyectoResult {
   readonly analisis: AnalisisConsolidadoProyecto | null;
   readonly actividades: Actividad[];
   readonly cargando: boolean;
+  readonly actualizando: boolean;
   readonly error: string | null;
   readonly recargar: () => Promise<void>;
+  readonly crearActividad: (datos: ActividadInput) => Promise<void>;
+  readonly editarActividad: (id: string, datos: ActividadInput) => Promise<void>;
+  readonly eliminarActividad: (id: string) => Promise<void>;
 }
 
 /**
@@ -26,34 +30,90 @@ export function useDashboardProyecto(proyectoId: string): UseDashboardProyectoRe
   const [analisis, setAnalisis] = useState<AnalisisConsolidadoProyecto | null>(null);
   const [actividades, setActividades] = useState<Actividad[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [actualizando, setActualizando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const cargar = useCallback(async (): Promise<void> => {
+  const cargarDatosEvm = useCallback(async (): Promise<void> => {
+    const datosActividades = await actividadesApi.listarPorProyecto(proyectoId);
+    setActividades(datosActividades);
+
+    if (datosActividades.length > 0) {
+      const datosAnalisis = await proyectosApi.obtenerAnalisisEvm(proyectoId);
+      setAnalisis(datosAnalisis);
+    } else {
+      setAnalisis(null);
+    }
+  }, [proyectoId]);
+
+  const cargarTodo = useCallback(async (): Promise<void> => {
     setCargando(true);
     setError(null);
-    setAnalisis(null);
     try {
-      const [datosProyecto, datosActividades] = await Promise.all([
-        proyectosApi.obtener(proyectoId),
-        actividadesApi.listarPorProyecto(proyectoId),
-      ]);
+      const datosProyecto = await proyectosApi.obtener(proyectoId);
       setProyecto(datosProyecto);
-      setActividades(datosActividades);
-
-      if (datosActividades.length > 0) {
-        const datosAnalisis = await proyectosApi.obtenerAnalisisEvm(proyectoId);
-        setAnalisis(datosAnalisis);
-      }
+      await cargarDatosEvm();
     } catch (err) {
       setError(obtenerMensajeDeError(err));
     } finally {
       setCargando(false);
     }
-  }, [proyectoId]);
+  }, [proyectoId, cargarDatosEvm]);
 
   useEffect(() => {
-    void cargar();
-  }, [cargar]);
+    void cargarTodo();
+  }, [cargarTodo]);
 
-  return { proyecto, analisis, actividades, cargando, error, recargar: cargar };
+  /**
+   * Tras una mutación solo se vuelven a pedir actividades + análisis (no el
+   * proyecto, cuyo nombre no cambia desde aquí) y sin activar `cargando`: el
+   * contenido ya renderizado permanece visible mientras se actualiza, en vez
+   * de taparlo con la pantalla de carga inicial en cada edición.
+   */
+  const recargarDatosEvm = useCallback(async (): Promise<void> => {
+    setActualizando(true);
+    try {
+      await cargarDatosEvm();
+    } catch (err) {
+      setError(obtenerMensajeDeError(err));
+    } finally {
+      setActualizando(false);
+    }
+  }, [cargarDatosEvm]);
+
+  const crearActividad = useCallback(
+    async (datos: ActividadInput): Promise<void> => {
+      await actividadesApi.crear(proyectoId, datos);
+      await recargarDatosEvm();
+    },
+    [proyectoId, recargarDatosEvm],
+  );
+
+  const editarActividad = useCallback(
+    async (id: string, datos: ActividadInput): Promise<void> => {
+      await actividadesApi.editar(id, datos);
+      await recargarDatosEvm();
+    },
+    [recargarDatosEvm],
+  );
+
+  const eliminarActividad = useCallback(
+    async (id: string): Promise<void> => {
+      await actividadesApi.eliminar(id);
+      await recargarDatosEvm();
+    },
+    [recargarDatosEvm],
+  );
+
+  return {
+    proyecto,
+    analisis,
+    actividades,
+    cargando,
+    actualizando,
+    error,
+    recargar: cargarTodo,
+    crearActividad,
+    editarActividad,
+    eliminarActividad,
+  };
 }

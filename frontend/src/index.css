@@ -30,3 +30,18 @@ body {
   color: var(--color-texto);
   -webkit-font-smoothing: antialiased;
 }
+
+@keyframes menu-desplegable {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animar-menu {
+  animation: menu-desplegable 150ms ease-out;
+}

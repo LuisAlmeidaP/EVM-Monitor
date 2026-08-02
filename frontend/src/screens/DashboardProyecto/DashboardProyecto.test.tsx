@@ -1,4 +1,5 @@
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DashboardProyecto } from './DashboardProyecto';
@@ -36,26 +37,27 @@ const proyectosApiMock = vi.mocked(proyectosApi);
 
 const proyecto: Proyecto = { id: 'p1', nombre: 'Torre Norte' };
 
-const actividades: Actividad[] = [
-  {
-    id: 'a1',
-    proyectoId: 'p1',
-    nombre: 'Excavación',
-    bac: 100_000,
-    porcentajeAvancePlanificado: 50,
-    porcentajeAvanceReal: 40,
-    costoReal: 50_000,
-  },
-  {
-    id: 'a2',
-    proyectoId: 'p1',
-    nombre: 'Cimentación',
-    bac: 200_000,
-    porcentajeAvancePlanificado: 30,
-    porcentajeAvanceReal: 35,
-    costoReal: 65_000,
-  },
-];
+const excavacion: Actividad = {
+  id: 'a1',
+  proyectoId: 'p1',
+  nombre: 'Excavación',
+  bac: 100_000,
+  porcentajeAvancePlanificado: 50,
+  porcentajeAvanceReal: 40,
+  costoReal: 50_000,
+};
+
+const cimentacion: Actividad = {
+  id: 'a2',
+  proyectoId: 'p1',
+  nombre: 'Cimentación',
+  bac: 200_000,
+  porcentajeAvancePlanificado: 30,
+  porcentajeAvanceReal: 35,
+  costoReal: 65_000,
+};
+
+const actividades: Actividad[] = [excavacion, cimentacion];
 
 const ANALISIS: AnalisisConsolidadoProyecto = {
   proyectoId: 'p1',
@@ -74,6 +76,23 @@ const ANALISIS: AnalisisConsolidadoProyecto = {
   estadoGeneral: 'en_riesgo',
 };
 
+const ANALISIS_UNA_ACTIVIDAD: AnalisisConsolidadoProyecto = {
+  proyectoId: 'p1',
+  cantidadActividades: 1,
+  indicadores: {
+    pv: 50_000,
+    ev: 40_000,
+    cv: -10_000,
+    sv: -10_000,
+    cpi: 0.8,
+    spi: 0.8,
+    eac: 125_000,
+    vac: -25_000,
+  },
+  interpretacion: { estadoCosto: 'sobre_presupuesto', estadoCronograma: 'atrasado' },
+  estadoGeneral: 'critico',
+};
+
 function renderPantalla() {
   return render(
     <MemoryRouter initialEntries={['/proyectos/p1/dashboard']}>
@@ -90,14 +109,16 @@ describe('DashboardProyecto', () => {
     proyectosApiMock.obtener.mockResolvedValue(proyecto);
   });
 
-  it('shows a loading state while fetching', async () => {
+  it('shows a skeleton loading state while fetching the initial data', async () => {
     actividadesApiMock.listarPorProyecto.mockResolvedValue(actividades);
     proyectosApiMock.obtenerAnalisisEvm.mockResolvedValue(ANALISIS);
 
     renderPantalla();
 
-    expect(screen.getByText('Cargando dashboard del proyecto...')).toBeInTheDocument();
-    await waitForElementToBeRemoved(() => screen.queryByText('Cargando dashboard del proyecto...'));
+    expect(screen.getByRole('status', { name: 'Cargando dashboard del proyecto' })).toBeInTheDocument();
+    await waitForElementToBeRemoved(() =>
+      screen.queryByRole('status', { name: 'Cargando dashboard del proyecto' }),
+    );
   });
 
   it('consumes the consolidated analysis endpoint and renders the project name', async () => {
@@ -150,7 +171,7 @@ describe('DashboardProyecto', () => {
     expect(await screen.findByText(/Sobrecosto/)).toBeInTheDocument();
   });
 
-  it('renders the charts and the read-only activities table once loaded', async () => {
+  it('renders the charts and an interactive activities table once loaded', async () => {
     actividadesApiMock.listarPorProyecto.mockResolvedValue(actividades);
     proyectosApiMock.obtenerAnalisisEvm.mockResolvedValue(ANALISIS);
 
@@ -164,22 +185,23 @@ describe('DashboardProyecto', () => {
       expect(container.querySelectorAll('.recharts-wrapper').length).toBeGreaterThan(0),
     );
     expect(screen.getByText('Cimentación')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Editar' }).length).toBeGreaterThan(0);
   });
 
-  it('shows an empty state with a call to action when the project has no activities yet (edge case)', async () => {
+  it('shows an empty state whose call to action opens the creation form inline, without navigating away (edge case)', async () => {
     actividadesApiMock.listarPorProyecto.mockResolvedValue([]);
+    const usuario = userEvent.setup();
 
     renderPantalla();
 
     expect(
       await screen.findByText('Este proyecto no tiene actividades registradas todavía.'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Crear la primera actividad' })).toHaveAttribute(
-      'href',
-      '/proyectos/p1/actividades',
-    );
     expect(proyectosApiMock.obtenerAnalisisEvm).not.toHaveBeenCalled();
+
+    await usuario.click(screen.getByRole('button', { name: 'Crear la primera actividad' }));
+
+    expect(screen.getByRole('dialog', { name: 'Nueva actividad' })).toBeInTheDocument();
   });
 
   it('shows an error message when the project itself fails to load', async () => {
@@ -204,9 +226,149 @@ describe('DashboardProyecto', () => {
     renderPantalla();
 
     expect(await screen.findByRole('heading', { name: 'Torre Norte' })).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /Gestionar actividades/ })[0]).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Gestionar actividades' })).toHaveAttribute(
       'href',
       '/proyectos/p1/actividades',
     );
+  });
+
+  describe('automatic refresh after a mutation', () => {
+    it('creates an activity inline and refreshes the table, KPI cards and overall status without navigating away', async () => {
+      actividadesApiMock.listarPorProyecto
+        .mockResolvedValueOnce([excavacion])
+        .mockResolvedValueOnce(actividades);
+      proyectosApiMock.obtenerAnalisisEvm
+        .mockResolvedValueOnce(ANALISIS_UNA_ACTIVIDAD)
+        .mockResolvedValueOnce(ANALISIS);
+      actividadesApiMock.crear.mockResolvedValue(cimentacion);
+      const usuario = userEvent.setup();
+
+      renderPantalla();
+      await screen.findByText('Crítico');
+
+      await usuario.click(screen.getByRole('button', { name: 'Nueva actividad' }));
+      await usuario.type(screen.getByLabelText('Nombre de la actividad'), 'Cimentación');
+      await usuario.type(screen.getByLabelText('Presupuesto planificado (BAC)'), '200000');
+      await usuario.type(screen.getByLabelText('% Avance planificado'), '30');
+      await usuario.type(screen.getByLabelText('% Avance real'), '35');
+      await usuario.type(screen.getByLabelText('Costo real incurrido (AC)'), '65000');
+      await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+      expect(await screen.findByText('Actividad creada correctamente.')).toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      // Consolidated status flips from the single-activity "Crítico" to the two-activity "En riesgo"
+      expect(await screen.findByText('En riesgo')).toBeInTheDocument();
+      expect(screen.getByText('Cimentación')).toBeInTheDocument();
+      expect(actividadesApiMock.listarPorProyecto).toHaveBeenCalledTimes(2);
+      expect(proyectosApiMock.obtenerAnalisisEvm).toHaveBeenCalledTimes(2);
+      // The project itself is only fetched once — mutations never re-fetch it
+      expect(proyectosApiMock.obtener).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows a discreet "actualizando" indicator during the post-mutation refresh, without hiding existing content', async () => {
+      actividadesApiMock.listarPorProyecto
+        .mockResolvedValueOnce([excavacion])
+        .mockResolvedValueOnce(actividades);
+      let resolverAnalisisFinal: (valor: AnalisisConsolidadoProyecto) => void = () => undefined;
+      proyectosApiMock.obtenerAnalisisEvm
+        .mockResolvedValueOnce(ANALISIS_UNA_ACTIVIDAD)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolverAnalisisFinal = resolve;
+            }),
+        );
+      actividadesApiMock.crear.mockResolvedValue(cimentacion);
+      const usuario = userEvent.setup();
+
+      renderPantalla();
+      await screen.findByText('Crítico');
+
+      await usuario.click(screen.getByRole('button', { name: 'Nueva actividad' }));
+      await usuario.type(screen.getByLabelText('Nombre de la actividad'), 'Cimentación');
+      await usuario.type(screen.getByLabelText('Presupuesto planificado (BAC)'), '200000');
+      await usuario.type(screen.getByLabelText('% Avance planificado'), '30');
+      await usuario.type(screen.getByLabelText('% Avance real'), '35');
+      await usuario.type(screen.getByLabelText('Costo real incurrido (AC)'), '65000');
+      await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+      expect(await screen.findByText('Actualizando…')).toBeInTheDocument();
+      // The previously loaded content stays mounted while refreshing
+      expect(screen.getByText('Crítico')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Torre Norte' })).toBeInTheDocument();
+
+      resolverAnalisisFinal(ANALISIS);
+      await waitForElementToBeRemoved(() => screen.queryByText('Actualizando…'));
+      expect(screen.getByText('En riesgo')).toBeInTheDocument();
+    });
+
+    it('edits an activity inline and refreshes the consolidated indicators', async () => {
+      const excavacionActualizada: Actividad = { ...excavacion, porcentajeAvanceReal: 100 };
+      actividadesApiMock.listarPorProyecto
+        .mockResolvedValueOnce([excavacion])
+        .mockResolvedValueOnce([excavacionActualizada]);
+      actividadesApiMock.obtener.mockResolvedValue(excavacion);
+      proyectosApiMock.obtenerAnalisisEvm
+        .mockResolvedValueOnce(ANALISIS_UNA_ACTIVIDAD)
+        .mockResolvedValueOnce({ ...ANALISIS_UNA_ACTIVIDAD, estadoGeneral: 'saludable' });
+      actividadesApiMock.editar.mockResolvedValue(excavacionActualizada);
+      const usuario = userEvent.setup();
+
+      renderPantalla();
+      await screen.findByText('Crítico');
+
+      await usuario.click(screen.getByRole('button', { name: 'Editar' }));
+      const campoReal = await screen.findByLabelText('% Avance real');
+      await usuario.clear(campoReal);
+      await usuario.type(campoReal, '100');
+      await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+      expect(await screen.findByText('Actividad actualizada correctamente.')).toBeInTheDocument();
+      expect(await screen.findByText('Saludable')).toBeInTheDocument();
+    });
+
+    it('deletes an activity inline after confirming, and shows the empty state again once none remain', async () => {
+      actividadesApiMock.listarPorProyecto
+        .mockResolvedValueOnce([excavacion])
+        .mockResolvedValueOnce([]);
+      proyectosApiMock.obtenerAnalisisEvm.mockResolvedValueOnce(ANALISIS_UNA_ACTIVIDAD);
+      actividadesApiMock.eliminar.mockResolvedValue(undefined);
+      const usuario = userEvent.setup();
+
+      renderPantalla();
+      await screen.findByText('Crítico');
+
+      await usuario.click(screen.getByRole('button', { name: 'Eliminar' }));
+      await usuario.click(screen.getByRole('button', { name: 'Eliminar actividad' }));
+
+      expect(await screen.findByText('Actividad eliminada correctamente.')).toBeInTheDocument();
+      expect(
+        await screen.findByText('Este proyecto no tiene actividades registradas todavía.'),
+      ).toBeInTheDocument();
+      expect(proyectosApiMock.obtenerAnalisisEvm).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows an inline error and keeps the dashboard usable when a mutation fails (edge case)', async () => {
+      actividadesApiMock.listarPorProyecto.mockResolvedValue([excavacion]);
+      proyectosApiMock.obtenerAnalisisEvm.mockResolvedValue(ANALISIS_UNA_ACTIVIDAD);
+      actividadesApiMock.eliminar.mockRejectedValue(
+        new ApiError(404, {
+          categoria: 'no_encontrado',
+          mensaje: 'La actividad no existe.',
+          referencia: 'x',
+        }),
+      );
+      const usuario = userEvent.setup();
+
+      renderPantalla();
+      await screen.findByText('Crítico');
+
+      await usuario.click(screen.getByRole('button', { name: 'Eliminar' }));
+      await usuario.click(screen.getByRole('button', { name: 'Eliminar actividad' }));
+
+      expect(await screen.findByText('La actividad no existe.')).toBeInTheDocument();
+      // The dashboard itself remains rendered, not replaced by a full error screen
+      expect(screen.getByRole('heading', { name: 'Torre Norte' })).toBeInTheDocument();
+    });
   });
 });
