@@ -44,7 +44,9 @@ test.describe('Navegación por menú hamburguesa y actualización automática', 
     await page.getByRole('link', { name: 'Dashboard ejecutivo' }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByText('Crítico', { exact: true })).toBeVisible();
-    await expect(page.getByText('Excavación')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Excavación' })).toBeVisible();
+    // La gráfica comparativa PV/EV/AC por actividad también refleja la nueva actividad
+    await expect(page.getByText('PV, EV y AC por actividad')).toBeVisible();
 
     const urlDashboard = page.url();
 

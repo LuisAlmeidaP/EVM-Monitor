@@ -33,7 +33,7 @@ test.describe('Dashboard Consolidado del Proyecto', () => {
       await page.getByLabel('% Avance real').fill(actividad.real);
       await page.getByLabel('Costo real incurrido (AC)').fill(actividad.costo);
       await page.getByRole('button', { name: 'Guardar' }).click();
-      await expect(page.getByText(actividad.nombre)).toBeVisible();
+      await expect(page.getByRole('cell', { name: actividad.nombre })).toBeVisible();
       await expect(page).toHaveURL(/\/dashboard$/);
       if (actividad.nombre !== 'Cimentación') {
         await page.getByRole('button', { name: 'Nueva actividad' }).click();

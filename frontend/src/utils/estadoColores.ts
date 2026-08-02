@@ -1,4 +1,4 @@
-import type { EstadoGeneral } from '../types/analisisEvm';
+import type { EstadoCosto, EstadoCronograma, EstadoGeneral } from '../types/analisisEvm';
 
 export type TonoEstado = 'correcto' | 'advertencia' | 'critico' | 'neutral';
 
@@ -65,4 +65,16 @@ export function tonoPorEstadoGeneral(estado: EstadoGeneral | null): TonoEstado {
   if (estado === 'saludable') return 'correcto';
   if (estado === 'en_riesgo') return 'advertencia';
   return 'critico';
+}
+
+export function tonoPorEstadoCronograma(estadoCronograma: EstadoCronograma | null): TonoEstado {
+  if (estadoCronograma === null) return 'neutral';
+  if (estadoCronograma === 'atrasado') return 'critico';
+  return 'correcto';
+}
+
+export function tonoPorEstadoCosto(estadoCosto: EstadoCosto | null): TonoEstado {
+  if (estadoCosto === null) return 'neutral';
+  if (estadoCosto === 'sobre_presupuesto') return 'critico';
+  return 'correcto';
 }
