@@ -15,10 +15,15 @@ import { formatearNumero } from '../../utils/format';
 import { ANIMACION_GRAFICOS_ACTIVA } from '../../utils/animacion';
 import { obtenerPaletaEstado } from '../../utils/estadoColores';
 import type { TonoEstado } from '../../utils/estadoColores';
-import type { AnalisisEvmActividad } from '../../types/analisisEvm';
+import type { EstadoCosto, EstadoCronograma } from '../../types/analisisEvm';
 
 interface GraficoValorEvmProps {
-  readonly analisis: AnalisisEvmActividad;
+  readonly pv: number;
+  readonly ev: number;
+  readonly ac: number;
+  readonly bac: number;
+  readonly estadoCosto: EstadoCosto | null;
+  readonly estadoCronograma: EstadoCronograma | null;
 }
 
 interface PuntoValor {
@@ -28,13 +33,13 @@ interface PuntoValor {
   readonly tono: TonoEstado;
 }
 
-function tonoParaCronograma(estadoCronograma: AnalisisEvmActividad['interpretacion']['estadoCronograma']): TonoEstado {
+function tonoParaCronograma(estadoCronograma: EstadoCronograma | null): TonoEstado {
   if (estadoCronograma === null) return 'neutral';
   if (estadoCronograma === 'atrasado') return 'critico';
   return 'correcto';
 }
 
-function tonoParaCosto(estadoCosto: AnalisisEvmActividad['interpretacion']['estadoCosto']): TonoEstado {
+function tonoParaCosto(estadoCosto: EstadoCosto | null): TonoEstado {
   if (estadoCosto === null) return 'neutral';
   if (estadoCosto === 'sobre_presupuesto') return 'critico';
   return 'correcto';
@@ -80,27 +85,25 @@ function LeyendaValor({ payload }: DefaultLegendContentProps) {
   );
 }
 
-export function GraficoValorEvm({ analisis }: GraficoValorEvmProps) {
-  const { indicadores, datosAvance, interpretacion } = analisis;
-
+export function GraficoValorEvm({ pv, ev, ac, bac, estadoCosto, estadoCronograma }: GraficoValorEvmProps) {
   const datos: PuntoValor[] = [
     {
       nombre: 'PV',
       descripcion: 'Valor planificado a la fecha',
-      valor: indicadores.pv,
+      valor: pv,
       tono: 'neutral',
     },
     {
       nombre: 'EV',
       descripcion: 'Valor ganado según el avance real',
-      valor: indicadores.ev,
-      tono: tonoParaCronograma(interpretacion.estadoCronograma),
+      valor: ev,
+      tono: tonoParaCronograma(estadoCronograma),
     },
     {
       nombre: 'AC',
       descripcion: 'Costo real incurrido',
-      valor: datosAvance.costoReal,
-      tono: tonoParaCosto(interpretacion.estadoCosto),
+      valor: ac,
+      tono: tonoParaCosto(estadoCosto),
     },
   ];
 
@@ -110,7 +113,7 @@ export function GraficoValorEvm({ analisis }: GraficoValorEvmProps) {
         <CartesianGrid strokeDasharray="3 3" stroke="#e8e6df" vertical={false} />
         <XAxis dataKey="nombre" tick={{ fontSize: 12, fill: '#3d3c37' }} />
         <YAxis
-          domain={[0, (dataMax: number) => Math.max(dataMax, datosAvance.bac) * 1.1]}
+          domain={[0, (dataMax: number) => Math.max(dataMax, bac) * 1.1]}
           tick={{ fontSize: 11, fill: '#77756a' }}
           tickFormatter={(valor: number) => formatearNumero(valor)}
           width={70}
@@ -118,7 +121,7 @@ export function GraficoValorEvm({ analisis }: GraficoValorEvmProps) {
         <Tooltip content={TooltipValor} cursor={{ fill: '#faf9f5' }} />
         <Legend content={LeyendaValor} />
         <ReferenceLine
-          y={datosAvance.bac}
+          y={bac}
           ifOverflow="extendDomain"
           stroke="#c96442"
           strokeDasharray="4 4"

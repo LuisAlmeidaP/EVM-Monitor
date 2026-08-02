@@ -34,3 +34,11 @@ export interface AnalisisEvmActividad {
   readonly interpretacion: InterpretacionEvm;
   readonly estadoGeneral: EstadoGeneral | null;
 }
+
+export interface AnalisisConsolidadoProyecto {
+  readonly proyectoId: string;
+  readonly cantidadActividades: number;
+  readonly indicadores: IndicadoresEvm;
+  readonly interpretacion: InterpretacionEvm;
+  readonly estadoGeneral: EstadoGeneral | null;
+}

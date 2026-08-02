@@ -68,4 +68,13 @@ describe('TablaActividades', () => {
 
     expect(onEliminar).toHaveBeenCalledWith(actividades[1]);
   });
+
+  it('renders in read-only mode without Editar/Eliminar when the handlers are omitted (dashboard usage)', () => {
+    renderConRouter(<TablaActividades actividades={actividades} />);
+
+    expect(screen.getByText('Excavación')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Eliminar' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Ver análisis EVM' })).toHaveLength(2);
+  });
 });
