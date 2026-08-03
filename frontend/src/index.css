@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-crema: #faf9f5;
+  --color-superficie: #ffffff;
+  --color-tinta: #1f1e1b;
+  --color-texto: #3d3c37;
+  --color-apagado: #77756a;
+  --color-borde: #e8e6df;
+  --color-acento: #c96442;
+  --color-acento-intenso: #ad4f31;
+  --color-acento-suave: #f7ede8;
+  --color-peligro: #b3261e;
+  --color-peligro-intenso: #8e1d17;
+  --color-peligro-suave: #fbeae9;
+  --color-exito: #3e6837;
+  --color-exito-suave: #ecf2ea;
+  --color-advertencia: #a15c07;
+  --color-advertencia-suave: #fbeed2;
+
+  --font-display: Georgia, 'Times New Roman', serif;
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-crema);
+  font-family: var(--font-sans);
+  color: var(--color-texto);
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes menu-desplegable {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animar-menu {
+  animation: menu-desplegable 150ms ease-out;
+}
