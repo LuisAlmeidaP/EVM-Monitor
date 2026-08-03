@@ -17,5 +17,40 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build:
+      context: ./backend
+    container_name: evm-backend
+    restart: unless-stopped
+    # DB_HOST usa el nombre del servicio de Postgres: dentro de la red de
+    # Docker se resuelve por DNS interno, no es "localhost".
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      FRONTEND_URL: ${FRONTEND_URL}
+      PORT: 3000
+    ports:
+      - '${BACKEND_PORT:-3000}:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: evm-frontend
+    restart: unless-stopped
+    # Se resuelve en el navegador del usuario, por eso apunta al puerto
+    # publicado en el host (localhost), no al nombre del servicio "backend".
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    ports:
+      - '${FRONTEND_PORT:-5173}:5173'
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
